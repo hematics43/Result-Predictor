@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Result Predictor Tool</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0faff;
+      padding: 20px;
+      max-width: 1000px;
+      margin: auto;
+    }
+    h2, h3 {
+      text-align: center;
+      color: #004080;
+    }
+    input, button {
+      padding: 8px;
+      margin: 5px;
+      border-radius: 4px;
+      border: 1px solid #aaa;
+    }
+    .subject-entry {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+    .subject-entry input {
+      width: 150px;
+    }
+    .btn {
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .btn:hover {
+      background-color: #005bb5;
+    }
+    .mark.fail {
+      background-color: #ffe0e0;
+    }
+    .result-box {
+      background: white;
+      padding: 15px;
+      border-left: 5px solid #007bff;
+      margin-top: 20px;
+      border-radius: 5px;
+    }
+    .pass { color: green; font-weight: bold; }
+    .fail-result { color: red; font-weight: bold; }
+    .suggestions button {
+      background: #e0f0ff;
+      border: 1px solid #007bff;
+      margin: 4px;
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background: #007bff;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🎓Result Predictor</h2>
+
+  <label>Student Name:</label>
+  <input type="text" id="studentName" placeholder="Enter name"><br><br>
+
+  <div class="suggestions">
+    <b>📌 Click Subject to Add (Uses common max marks):</b><br>
+    <button onclick="quickAdd('Math')">Math</button>
+    <button onclick="quickAdd('Science')">Science</button>
+    <button onclick="quickAdd('English')">English</button>
+    <button onclick="quickAdd('History')">History</button>
+    <button onclick="quickAdd('Geography')">Geography</button>
+    <button onclick="quickAdd('Computer')">Computer</button>
+    <button onclick="quickAdd('Physics')">Physics</button>
+    <button onclick="quickAdd('Chemistry')">Chemistry</button>
+    <button onclick="quickAdd('Biology')">Biology</button>
+    <button onclick="quickAdd('Hindi')">Hindi</button>
+    <button onclick="quickAdd('Marathi')">Marathi</button>
+    <button onclick="quickAdd('Sanskrit')">Sanskrit</button>
+    <button onclick="quickAdd('Social Studies')">Social Studies</button>
+    <button onclick="quickAdd('Economics')">Economics</button>
+    <button onclick="quickAdd('Business Studies')">Business Studies</button>
+    <button onclick="quickAdd('Accounts')">Accounts</button>
+    <button onclick="quickAdd('Psychology')">Psychology</button>
+    <button onclick="quickAdd('Political Science')">Political Science</button>
+    <button onclick="quickAdd('Art')">Art</button>
+    <button onclick="quickAdd('Music')">Music</button>
+  </div><br>
+
+  <div id="subjectContainer"></div>
+
+  <div class="subject-entry">
+    <input type="text" id="newSubjectName" placeholder="Custom Subject">
+    <button class="btn" onclick="addSubject()">➕ Add Subject</button>
+  </div>
+
+  <button class="btn" onclick="predictResult()">✅ Predict Result</button>
+  <button class="btn" onclick="saveStudent()">💾 Save Student</button>
+  <button class="btn" onclick="downloadData()">📥 Download Data</button>
+
+  <div class="result-box" id="result"></div>
+
+  <h3>📋 All Students Results</h3>
+  <table id="allResults">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Total</th>
+        <th>Percentage</th>
+        <th>Grade</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h3>🏆 Class Summary</h3>
+  <div id="summary"></div>
+
+  <script>
+    let subjects = [];
+    let maxMarksSet = false;
+    let commonMaxMarks = 100;
+    const allStudents = [];
+
+    function askMaxMarksOnce() {
+      if (!maxMarksSet) {
+        const max = prompt("Enter maximum marks for all subjects:", "100");
+        if (max && !isNaN(max) && max > 0) {
+          commonMaxMarks = parseInt(max);
+          maxMarksSet = true;
+        } else {
+          alert("Invalid max marks.");
+        }
+      }
+    }
+
+    function quickAdd(name) {
+      askMaxMarksOnce();
+      if (!subjects.some(s => s && s.name === name)) {
+        subjects.push({ name, max: commonMaxMarks });
+        renderSubjectInput(name, commonMaxMarks, subjects.length - 1);
+      }
+    }
+
+    function addSubject() {
+      askMaxMarksOnce();
+      const name = document.getElementById("newSubjectName").value.trim();
+      if (!name) return;
+      if (subjects.some(s => s && s.name === name)) return;
+      subjects.push({ name, max: commonMaxMarks });
+      renderSubjectInput(name, commonMaxMarks, subjects.length - 1);
+      document.getElementById("newSubjectName").value = "";
+    }
+
+    function renderSubjectInput(name, max, id) {
+      const container = document.getElementById("subjectContainer");
+      const div = document.createElement("div");
+      div.className = "subject-entry";
+      div.id = `subject-${id}`;
+      div.innerHTML = `
+        <label>${name} (${max})</label>
+        <input type="number" id="mark-${id}" class="mark" min="0" max="${max}" placeholder="Enter marks">
+        <button onclick="deleteSubject(${id})">❌</button>
+      `;
+      container.appendChild(div);
+    }
+
+    function deleteSubject(id) {
+      if (!confirm("Delete this subject?")) return;
+      const el = document.getElementById(`subject-${id}`);
+      if (el) el.remove();
+      subjects[id] = null;
+    }
+
+    function predictResult() {
+      if (!subjects.some(s => s)) {
+        alert("Please add subjects.");
+        return;
+      }
+      let totalMarks = 0, totalMax = 0, fails = [];
+      subjects.forEach((s, i) => {
+        if (!s) return;
+        const val = parseFloat(document.getElementById(`mark-${i}`).value) || 0;
+        const inp = document.getElementById(`mark-${i}`);
+        inp.classList.remove("fail");
+        if (val < s.max * 0.35) {
+          inp.classList.add("fail");
+          fails.push(s.name);
+        }
+        totalMarks += val;
+        totalMax += s.max;
+      });
+      const percent = (totalMarks / totalMax) * 100;
+      let grade = percent >= 90 ? "A+" : percent >= 75 ? "A" : percent >= 60 ? "B" : percent >= 50 ? "C" : percent >= 35 ? "D" : "F";
+      const name = document.getElementById("studentName").value || "Unnamed";
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = `
+        <h3>${name} - ${fails.length === 0 ? '<span class="pass">Passed ✅</span>' : '<span class="fail-result">Failed ❌</span>'}</h3>
+        Total: ${totalMarks}/${totalMax}<br>
+        Percentage: ${percent.toFixed(2)}%<br>
+        Grade: <b>${grade}</b><br>
+        ${fails.length ? 'Failed in: <b>' + fails.join(", ") + '</b>' : ''}
+      `;
+    }
+
+    function saveStudent() {
+      if (!subjects.some(s => s)) return;
+      let totalMarks = 0, totalMax = 0, fail = false;
+      subjects.forEach((s, i) => {
+        if (!s) return;
+        const val = parseFloat(document.getElementById(`mark-${i}`).value) || 0;
+        if (val < s.max * 0.35) fail = true;
+        totalMarks += val;
+        totalMax += s.max;
+      });
+      const percent = (totalMarks / totalMax) * 100;
+      let grade = percent >= 90 ? "A+" : percent >= 75 ? "A" : percent >= 60 ? "B" : percent >= 50 ? "C" : percent >= 35 ? "D" : "F";
+      const name = document.getElementById("studentName").value || "Unnamed";
+
+      const student = { name, totalMarks, totalMax, percent, grade, status: fail ? "Fail ❌" : "Pass ✅" };
+      const index = allStudents.length;
+      allStudents.push(student);
+
+      const rowId = `row-${index}`;
+      document.querySelector("#allResults tbody").insertAdjacentHTML("beforeend", `
+        <tr id="${rowId}">
+          <td>${name}</td>
+          <td>${totalMarks}/${totalMax}</td>
+          <td>${percent.toFixed(2)}%</td>
+          <td>${grade}</td>
+          <td style="color:${fail ? 'red' : 'green'}">${student.status}</td>
+          <td><button onclick="deleteStudent('${rowId}', ${index})">🗑️</button></td>
+        </tr>
+      `);
+
+      document.getElementById("studentName").value = "";
+      subjects.forEach((s, i) => s && (document.getElementById(`mark-${i}`).value = ""));
+
+      updateSummary();
+    }
+
+    function deleteStudent(rowId, index) {
+      if (!confirm("Delete this student record?")) return;
+      const row = document.getElementById(rowId);
+      if (row) row.remove();
+      allStudents[index] = null;
+      updateSummary();
+    }
+
+    function updateSummary() {
+      const validStudents = allStudents.filter(s => s);
+      if (validStudents.length === 0) {
+        document.getElementById("summary").innerHTML = "";
+        return;
+      }
+      let sum = 0, topper = validStudents[0];
+      validStudents.forEach(s => {
+        sum += s.percent;
+        if (s.percent > topper.percent) topper = s;
+      });
+      const avg = sum / validStudents.length;
+      document.getElementById("summary").innerHTML = `
+        <b>Average:</b> ${avg.toFixed(2)}%<br>
+        <b>Topper:</b> ${topper.name} (${topper.percent.toFixed(2)}%)<br>
+      `;
+    }
+
+    function downloadData() {
+      const validStudents = allStudents.filter(s => s);
+      if (validStudents.length === 0) return alert("No data to download.");
+
+      let csv = "Name,Total,Percentage,Grade,Status\n";
+      validStudents.forEach(s => {
+        csv += `"${s.name}",${s.totalMarks}/${s.totalMax},${s.percent.toFixed(2)}%,${s.grade},${s.status}\n`;
+      });
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "results.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+
+</body>
+</html>
